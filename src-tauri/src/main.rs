@@ -17,6 +17,8 @@ fn get_graph() -> String {
         .unwrap()
         .map(|f| f.unwrap().file_name())
         .filter(|f| f.to_str().unwrap().ends_with(".md"))
+        // TODO: remove the .md extension from the filename
+        .map(|f| f.to_str().unwrap().to_string().strip_suffix(".md").unwrap().to_string())
         .collect();
 
     let mut map = std::collections::HashMap::<String, Vec<String>>::new();
@@ -24,8 +26,9 @@ fn get_graph() -> String {
     let re = Regex::new(r"\[\[([^\]|]+)").unwrap();
 
     for file in files {
-        let file_name = file.to_str().unwrap().to_string();
-        let file_path = format!("{}/{}", "/home/fatt/.vimwiki", file_name);
+        let file_name = file.clone();
+        let file_path = format!("{}/{}.md", "/home/fatt/.vimwiki", file_name);
+        println!("file_path: {}", file_path);
         let content = std::fs::read_to_string(file_path).unwrap();
         let links: Vec<_> = content
             .lines()
