@@ -1,29 +1,31 @@
-use clap::Parser;
+// Prevents additional console window on Windows in release, DO NOT REMOVE!!
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use regex::Regex;
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    /// Path on the vimwiki root dir
-    #[arg(short, long)]
-    path: String,
+fn main() {
+    tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![get_graph])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }
 
-fn main() {
-    let args = Args::parse();
-
-    let files: Vec<_> = std::fs::read_dir(&args.path)
+#[tauri::command]
+fn get_graph() -> String {
+    // TODO: refactor this hardcoded path
+    let files: Vec<_> = std::fs::read_dir("/home/fatt/.vimwiki")
         .unwrap()
         .map(|f| f.unwrap().file_name())
         .filter(|f| f.to_str().unwrap().ends_with(".md"))
         .collect();
 
     let mut map = std::collections::HashMap::<String, Vec<String>>::new();
+    let mut list = vec![];
     let re = Regex::new(r"\[\[([^\]|]+)").unwrap();
 
     for file in files {
         let file_name = file.to_str().unwrap().to_string();
-        let file_path = format!("{}/{}", &args.path, file_name);
+        let file_path = format!("{}/{}", "/home/fatt/.vimwiki", file_name);
         let content = std::fs::read_to_string(file_path).unwrap();
         let links: Vec<_> = content
             .lines()
@@ -38,13 +40,11 @@ fn main() {
             })
             .collect();
 
+        links.iter().for_each(|i| {
+            list.push(vec![file_name.clone(), i.clone()]);
+        });
         map.insert(file_name, links);
     }
 
-    map.into_iter().for_each(|i| println!("{:#?}", i));
-    // let serialized_data = serde_json::to_string(&map).unwrap();
-    // let res = map.into_iter().map(|i| i.0).collect::<Vec<_>>().join("\n");
-    // println!("{}", serialized_data);
-
-    todo!("draw graph using javascript");
+    serde_json::to_string(&list).unwrap()
 }
